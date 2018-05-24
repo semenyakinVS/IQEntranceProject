@@ -61,6 +61,10 @@ float helper_middleZeroYX(const float *inPoint1Data, const float *inPoint2Data)
 void IQGraphViewLayer::graphViewAccess_initDLData() {
     if (!_pointData) return;
 
+#   ifdef RENDER_DEBUG
+    processGLErrors("graph data init begin");
+#   endif //RENDER_DEBUG
+
     //NB: Method build vertex data for drawing using gl_triangle_strip drawing mode
 
     //Vector used for easier manipulating with buffer. Stores data for 2D vertexes
@@ -183,6 +187,10 @@ void IQGraphViewLayer::graphViewAccess_initDLData() {
     //We don't need points data now - it was converted to VBO vertex data and sent to the GPU.
     // Remove it's CPU copy.
     delete _pointData; _pointData = nullptr;
+
+#   ifdef RENDER_DEBUG
+    processGLErrors("graph data init end");
+#   endif //RENDER_DEBUG
 }
 
 //@ - - - - - - - - - - - - - - Deinitializing rendering data VBO - - - - - - - - - - - - - - - - -@

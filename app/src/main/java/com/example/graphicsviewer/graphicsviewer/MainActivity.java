@@ -90,6 +90,18 @@ public class MainActivity extends AppCompatActivity {
         _graphView.setGraphLayer(_firstGraphLayer);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(_graphView != null) _graphView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (_graphView != null) _graphView.onPause();
+    }
+
     //Views
     IQGraphView _graphView;
     IQGraphViewLayer _firstGraphLayer;

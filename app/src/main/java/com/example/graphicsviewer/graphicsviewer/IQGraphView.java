@@ -74,7 +74,6 @@ public class IQGraphView extends GLSurfaceView {
                 nativeDraw(_cppInstanceID);
             }
         });
-
         setRenderMode(android.opengl.GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
         //Setup touch event routing for gestures processing
@@ -166,6 +165,7 @@ public class IQGraphView extends GLSurfaceView {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //Refs:
-//1. https://stackoverflow.com/questions/21877127/calling-system-loadlibrary-twice-for-the-same-shared-library
-//2. https://developer.android.com/training/gestures/multi
-//3. https://stackoverflow.com/questions/12115655/why-is-my-opengl-code-failing
+//1. http://www.learnopengles.com/calling-opengl-from-android-using-the-ndk/
+//2. https://stackoverflow.com/questions/21877127/calling-system-loadlibrary-twice-for-the-same-shared-library
+//3. https://developer.android.com/training/gestures/multi
+//4. https://stackoverflow.com/questions/12115655/why-is-my-opengl-code-failing
