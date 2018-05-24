@@ -146,17 +146,14 @@ void IQGraphView::draw() {
     helper_fillCameraFrameToNDCMatrix(_fromToNDC,
                                       _frameBegin.x, _frameBegin.y, _frameEnd.x, _frameEnd.y, 1.f);
 
-    GLuint theMVPMatrixID;
-    if (-1 == glGetUniformLocation(_programID, "MVPMatrix")) {
+    GLuint theMVPMatrixID = glGetUniformLocation(_programID, "MVPMatrix");
+#   ifdef RENDER_DEBUG
+    if (-1 == theMVPMatrixID) {
         __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
                             "!!! Cannot find [MVPMatrix] uniform !!!");
     }
-
-#   ifdef RENDER_DEBUG
-
-#   endif //RENDER_DEBUG
-
     glUniformMatrix4fv(theMVPMatrixID, 1, GL_FALSE, glm::value_ptr(_fromToNDC));
+#   endif //RENDER_DEBUG
 
     //-Send depth data
     //TODO: Make sending of depth uniform works
@@ -164,22 +161,15 @@ void IQGraphView::draw() {
     //glUniform1f(theDepthID, 0.f);
 
     //-Setup vertex data
-    GLuint theVertexAttributeID;
-    if (-1 == glGetAttribLocation(_programID, "vertexPosition")) {
+
+    //TODO: Using 1xGL_FLOAT_VEC3 instead 3xGL_FLOAT as attribute setting cause crash on draw. Why?
+    GLuint theVertexAttributeID = glGetAttribLocation(_programID, "vertexPosition");
+#   ifdef RENDER_DEBUG
+    if (-1 == theVertexAttributeID) {
         __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
                             "!!! Cannot find [vertexPosition] attribute !!!");
     }
-
-#   ifdef RENDER_DEBUG
-    GLenum theError = glGetError();
-    if (theError != GL_NO_ERROR) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
-                            "!!! Error on attribute [vertexPosition] location %s !!!",
-                            getGLErrorFlagString(theError));
-    }
 #   endif //RENDER_DEBUG
-
-    //TODO: Using 1xGL_FLOAT_VEC3 instead 3xGL_FLOAT as attribute setting cause crash on draw. Why?
     glBindBuffer(GL_ARRAY_BUFFER, _graphLayer->graphViewAccess_getVBOID());
     glVertexAttribPointer(
             theVertexAttributeID,    /*Attribute ID*/
