@@ -23,7 +23,7 @@ bool testGLSuccess(
         inIntegerAccess(inObjectID, GL_INFO_LOG_LENGTH, &theLogMessageLength);
 
         if(theLogMessageLength > 1) {
-            *outErrorLog = (char *)malloc(sizeof(char) * theLogMessageLength);
+            *outErrorLog = new char[theLogMessageLength];
             inLogAccess(inObjectID, theLogMessageLength, NULL, *outErrorLog);
         }
     }
@@ -34,7 +34,12 @@ bool testGLSuccess(
 //------------------------------------ Program -----------------------------------------------------
 GLuint shaderCompileAndSend(const char *inSource, GLenum inType) {
     GLuint theShaderID = glCreateShader(inType);
-    if (0 == theShaderID) return 0;
+    if (0 == theShaderID) {
+#       ifdef RENDER_DEBUG
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "!!! GL cannot create shader !!!");
+#       endif //RENDER_DEBUG
+        return 0;
+    }
 
     //Compile
     //NB: Here we have type casting - from "const char *" to "const GLbyte *"
@@ -51,11 +56,16 @@ GLuint shaderCompileAndSend(const char *inSource, GLenum inType) {
     {
         if (NULL != theMessage) {
             __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%s", theMessage);
-            free(theMessage);
+            delete [] theMessage;
         }
 
         glDeleteShader(theShaderID);
         theShaderID = 0;
+    } else {
+#       ifdef RENDER_DEBUG
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
+                            "Shader [%d] created and compiled successful", theShaderID);
+#       endif //RENDER_DEBUG
     }
 
     return theShaderID;
@@ -67,7 +77,12 @@ void deleteShader(GLuint inShaderID) {
 
 GLuint createAndLinkShaderProgram(GLuint inVertexShaderID, GLuint inFragmentShaderID) {
     GLuint theProgramID = glCreateProgram();
-    if(0 == theProgramID) return 0;
+    if(0 == theProgramID) {
+#       ifdef RENDER_DEBUG
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "!!! GL cannot create shader program !!!");
+#       endif //RENDER_DEBUG
+        return 0;
+    }
 
     glAttachShader(theProgramID, inVertexShaderID);
     glAttachShader(theProgramID, inFragmentShaderID);
@@ -81,11 +96,16 @@ GLuint createAndLinkShaderProgram(GLuint inVertexShaderID, GLuint inFragmentShad
     {
         if (theMessage) {
             __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%s", theMessage);
-            free(theMessage);
+            delete [] theMessage;
         }
 
         glDeleteProgram(theProgramID);
         theProgramID = 0;
+    } else {
+#       ifdef RENDER_DEBUG
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
+                            "Program [%d] created and linked successful", theProgramID);
+#       endif //RENDER_DEBUG
     }
 
 #   ifdef RENDER_DEBUG
@@ -98,18 +118,16 @@ GLuint createAndLinkShaderProgram(GLuint inVertexShaderID, GLuint inFragmentShad
         glGetProgramiv(theProgramID, GL_INFO_LOG_LENGTH, &theMessageLength);
         char *theMessage = new char[theMessageLength];
         glGetProgramInfoLog(theProgramID, theMessageLength, NULL, theMessage);
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Shader validation result (length=%d): %s",
-                            theMessageLength, theMessage);
+
+        if (0 == theMessageLength) {
+            __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Shader validation with no messages");
+        } else {
+            __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Shader validation result: %s",
+                                theMessageLength, theMessage);
+        }
         delete [] theMessage;
     } else {
         __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Shader validation was not correct");
-    }
-
-    glGetProgramiv(theProgramID, GL_LINK_STATUS, &theValue);
-    if (theValue == GL_TRUE) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Program linked successful");
-    } else {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "!!! Program linked incorrect !!!");
     }
 
     glGetProgramiv(theProgramID, GL_ACTIVE_ATTRIBUTES, &theValue);
@@ -169,6 +187,41 @@ void processGLErrors(const char *inMessage) {
     __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "There was %d errors on %s",
                         theErrorsCount, inMessage);
 }
+
+void printGLInfo(bool inPrintExtensions) {
+    const GLubyte *theGLVendor = glGetString(GL_VENDOR);
+    const GLubyte *theGLRender = glGetString(GL_RENDERER);
+    const GLubyte *theGLVersion = glGetString(GL_VERSION);
+    const GLubyte *theGLSLVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
+
+    if (inPrintExtensions) {
+        const GLubyte *theGLExtensions = glGetString(GL_EXTENSIONS);
+
+        const char *theFormat =
+                        "======== GL Info ========\n"
+                        "Vendor: %s\n"
+                        "Renderer: %s\n"
+                        "GL version: %s\n"
+                        "GLSL version: %s\n"
+                        "GL extensions: %s\n"
+                        "=========================";
+
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", theFormat,
+                           theGLVendor, theGLRender, theGLVersion, theGLSLVersion, theGLExtensions);
+    } else {
+        const char *theFormat =
+                        "======== GL Info ========\n"
+                        "Vendor: %s\n"
+                        "Renderer: %s\n"
+                        "GL version: %s\n"
+                        "GLSL version: %s\n"
+                        "=========================";
+
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", theFormat,
+                           theGLVendor, theGLRender, theGLVersion, theGLSLVersion);
+    }
+}
+
 #endif //RENDER_DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

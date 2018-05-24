@@ -30,10 +30,13 @@ void IQGraphView::init() {
 
 #   ifdef RENDER_DEBUG
     processGLErrors("graph view init begin");
+
+    printGLInfo();
 #   endif //RENDER_DEBUG
 
     //Setup shader program
     const char *theVertexShaderSource =
+            "#version 100                                                                       \n"
             "attribute vec2 vertexPosition;                                                     \n"
             //TODO: Make sending of depth uniform works
             //"uniform float depth;\n"
@@ -43,6 +46,7 @@ void IQGraphView::init() {
             "} \n";
 
     const char *theFragmentShaderSource =
+            "#version 100                                                                       \n"
             "void main() {                                                                      \n"
             "   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);                                        \n"
             "}                                                                                  \n";
@@ -143,7 +147,8 @@ void IQGraphView::draw() {
 
     GLuint theMVPMatrixID;
     if (-1 == glGetUniformLocation(theMVPMatrixID, "MVPMatrix")) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Cannot find [MVPMatrix] uniform");
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
+                            "!!! Cannot find [MVPMatrix] uniform !!!");
     }
 
 #   ifdef RENDER_DEBUG
@@ -180,7 +185,8 @@ void IQGraphView::draw() {
     //-Setup vertex data
     GLuint theVertexAttributeID;
     if (-1 == glGetAttribLocation(theVertexAttributeID, "vertexPosition")) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Cannot find [vertexPosition] attribute");
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
+                            "!!! Cannot find [vertexPosition] attribute !!!");
     }
 
 #   ifdef RENDER_DEBUG
@@ -289,6 +295,10 @@ void IQGraphView::setGraphLayer(IQGraphViewLayer *inGraphLayer) {
 //6. https://stackoverflow.com/questions/8704801/glvertexattribpointer-clarification
 //7. https://arm-software.github.io/opengl-es-sdk-for-android/vbos.html
 //8. https://stackoverflow.com/questions/15722803/opengl-shader-error-1282
+
+//SL version:
+//9. https://www.opengl.org/discussion_boards/showthread.php/168930-Problem-with-version
+//10. https://stackoverflow.com/questions/27407774/get-supported-glsl-versions/27410925
 
 //Others:
 //1. https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glDebugMessageCallback.xhtml - won't help...

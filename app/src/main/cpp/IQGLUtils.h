@@ -28,7 +28,7 @@ void deleteVBO(GLuint inVBOID);
 //NB: Function return const literal strings. Don't remove them!
 const char *getGLErrorFlagString(GLenum inErrorFlag);
 void processGLErrors(const char *inMessage = "undefined");
-
+void printGLInfo(bool inPrintExtensions = false);
 #endif //RENDER_DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
