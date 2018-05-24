@@ -62,7 +62,7 @@ void IQGraphViewLayer::graphViewAccess_initDLData() {
     if (!_pointData) return;
 
 #   ifdef RENDER_DEBUG
-    processGLErrors("graph data init begin");
+    dropGLErrors("graph data init begin");
 #   endif //RENDER_DEBUG
 
     //NB: Method build vertex data for drawing using gl_triangle_strip drawing mode
@@ -189,7 +189,7 @@ void IQGraphViewLayer::graphViewAccess_initDLData() {
     delete _pointData; _pointData = nullptr;
 
 #   ifdef RENDER_DEBUG
-    processGLErrors("graph data init end");
+    dropGLErrors("graph data init end");
 #   endif //RENDER_DEBUG
 }
 

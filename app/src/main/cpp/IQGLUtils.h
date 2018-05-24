@@ -9,26 +9,44 @@
 #define RENDER_DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//Program
+//========================================= API ====================================================
+//--------------------------------------- Program --------------------------------------------------
 GLuint shaderCompileAndSend(const char *inSource, GLenum inType);
 void deleteShader(GLuint inShaderID);
 
 GLuint createAndLinkShaderProgram(GLuint inVertexShaderID, GLuint inFragmentShaderID);
 void deleteShaderProgram(GLuint inShaderProgramID);
 
-//Data
+//----------------------------------------- Data ---------------------------------------------------
 //TODO: Provide error tracking for VBO creation
 GLuint createVBO(const void *inBuffer, int inSize, GLenum inTarget, GLenum inUsage);
 void deleteVBO(GLuint inVBOID);
 
-//Debug
-//TODO: Move this code to GL utils
 #ifdef RENDER_DEBUG
+//======================================== Debug ===================================================
+//-------------------------------------Program debug -----------------------------------------------
+void printShaderDebugInfo(GLuint inShaderID);
+void printShaderProgramDebugInfo(GLuint inShaderProgramID);
 
-//NB: Function return const literal strings. Don't remove them!
-const char *getGLErrorFlagString(GLenum inErrorFlag);
-void processGLErrors(const char *inMessage = "undefined");
+//----------------------------- General error tracking utils ---------------------------------------
+enum class GLErrorContext : int {
+    Shader,
+    ShaderProgram,
+    Unknown,
+    Invalid
+};
+
+void processGLError(GLErrorContext inContext, GLuint inGLObjectID, const char *inMessage = "");
+void dropGLErrors(const char *inMessage = "<no message>");
+
+//--------------------------------- General purpose printing ---------------------------------------
 void printGLInfo(bool inPrintExtensions = false);
+
+//--------------------------------- Enum to string conversions -------------------------------------
+//NB: This functions return const literal strings. Don't delete[] them, please!
+const char *getGLErrorFlagString(GLenum inErrorFlag);
+const char *getGLTypeStringName(GLenum inType, bool inGetAsInGLSLName = true);
+
 #endif //RENDER_DEBUG
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
