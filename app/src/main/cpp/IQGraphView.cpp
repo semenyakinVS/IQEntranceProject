@@ -8,56 +8,67 @@
 #include "IQGraphViewLayer.h"
 
 //Utils
+#include "algorithm" //for find(...) in graph layer link/unlink methods
+
 #ifdef RENDER_DEBUG
 #include <android/log.h>
+#include <cstdio> // for sprintf(...) in NDC matrix setup function
 #endif //RENDER_DEBUG
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+static const char *kVertexShaderSource =
+        "#version 100                                                                       \n"
+        "attribute vec2 vertexPosition;                                                     \n"
+        //TODO: Make sending of depth uniform works
+        //"uniform float depth;\n"
+        "uniform mat4 MVPMatrix;                                                            \n"
+        "void main() {                                                                      \n"
+        "   gl_Position = MVPMatrix * vec4(vertexPosition.xy, 0.0, 1.0);                    \n"
+        "}                                                                                  \n";
+
+static const char *kFragmentShaderSource =
+        "#version 100                                                                       \n"
+        "void main() {                                                                      \n"
+        "   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);                                        \n"
+        "}                                                                                  \n";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //--------------------------------------- Methods --------------------------------------------------
 //- - - - - - - - - - - - - - - - - - Memory lifecycle - - - - - - - - - - - - - - - - - - - - - - -
 IQGraphView::IQGraphView()
-    : _graphLayer(nullptr),
-      _frameBegin(-1.f, -1.f),
-      _frameEnd(1.f, 1.f),
-      _programID(0),
-      _viewportWidth(1.f), _viewportHeight(1.f) { }
+    : _activeLayer(nullptr), _linkedLayers(),
+      _frameBegin(-1.f, -1.f), _frameEnd(1.f, 1.f),
+      _viewportWidth(1.f), _viewportHeight(1.f),
+      _deferredActionsLock(),
+      _layerToBeActive(nullptr), _isLayerToBeActiveSetNeed(false),
+      _layersToLink(), _layersToUnlink(),
+      _programID(0) { }
 
-IQGraphView::~IQGraphView() { }
+IQGraphView::~IQGraphView() {
+    //TODO: Process destructor with preventing errors on java interaction
+}
 
 //- - - - - - - - - - - - - - - - - GL drawing lifecycle - - - - - - - - - - - - - - - - - - - - - -
-void IQGraphView::init() {
-    //TODO: Put here an errors messages tracking
-
+//@ - - - - - - - - - - - - - - - - - - Initializing - - - - - - - - - - - - - - - - - - - - - - - @
+void IQGraphView::internal_init() {
 #   ifdef RENDER_DEBUG
     dropGLErrors("graph view init begin");
     printGLInfo();
 #   endif //RENDER_DEBUG
 
     //Setup shader program
-    const char *theVertexShaderSource =
-            "#version 100                                                                       \n"
-            "attribute vec2 vertexPosition;                                                     \n"
-            //TODO: Make sending of depth uniform works
-            //"uniform float depth;\n"
-            "uniform mat4 MVPMatrix;                                                            \n"
-            "void main() {                                                                      \n"
-            "   gl_Position = MVPMatrix * vec4(vertexPosition.xy, 0.0, 1.0);                    \n"
-            "} \n";
-
-    const char *theFragmentShaderSource =
-            "#version 100                                                                       \n"
-            "void main() {                                                                      \n"
-            "   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);                                        \n"
-            "}                                                                                  \n";
-
-    GLuint theVertexShaderID = shaderCompileAndSend(theVertexShaderSource, GL_VERTEX_SHADER);
+    GLuint theVertexShaderID = shaderCompileAndSend(kVertexShaderSource, GL_VERTEX_SHADER);
     if (0 == theVertexShaderID) return;
 
-    GLuint theFragmentShaderID = shaderCompileAndSend(theFragmentShaderSource, GL_FRAGMENT_SHADER);
+    GLuint theFragmentShaderID = shaderCompileAndSend(kFragmentShaderSource, GL_FRAGMENT_SHADER);
     if (0 == theFragmentShaderID) return;
 
     _programID = createAndLinkShaderProgram(theVertexShaderID, theFragmentShaderID);
     if (0 == _programID) return;
+
+#   ifdef RENDER_DEBUG
+    printShaderDebugInfo(_programID);
+#   endif //RENDER_DEBUG
 
     //Setup global GL properties
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -65,6 +76,18 @@ void IQGraphView::init() {
 #   ifdef RENDER_DEBUG
     dropGLErrors("graph view init end");
 #   endif //RENDER_DEBUG
+}
+
+void IQGraphView::reinit() {
+    std::unique_lock<std::mutex> theWaitReinitLock(_deferredActionsLock);
+
+    helper_processDeferredActions();
+
+    internal_init();
+
+    for (IQGraphViewLayer *theLayer : _linkedLayers) {
+        theLayer->graphViewAccess_initGLData();
+    }
 }
 
 //@ - - - - - - - - - - - - - - - - - - Drawing - - - - - - - - - - - - - - - - - - - - - - - - - -@
@@ -98,22 +121,22 @@ void helper_fillCameraFrameToNDCMatrix(glm::mat4x4 &outMatrix,
     outMatrix[3][3] = 1;
 
 #   ifdef RENDER_DEBUG
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", " = = = = = = = = = = = =");
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Frame to NDC matrix (for %f %f %f %f %f):",
-                        inFrameBeginX, inFrameBeginY, inFrameEndX, inFrameEndY, inDepthLevel);
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
-          outMatrix[0][0], outMatrix[1][0], outMatrix[2][0], outMatrix[3][0]);
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
-          outMatrix[0][1], outMatrix[1][1], outMatrix[2][1], outMatrix[3][1]);
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
-          outMatrix[0][2], outMatrix[1][2], outMatrix[2][2], outMatrix[3][2]);
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
-          outMatrix[0][3], outMatrix[1][3], outMatrix[2][3], outMatrix[3][3]);
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", " = = = = = = = = = = = =");
+    //TODO: Move this code to appropriate function
+    const char *kMessageFormat = "Frame to NDC matrix (for %f %f %f %f %f):";
+    const int theSize = snprintf(nullptr, 0, kMessageFormat,
+                              inFrameBeginX, inFrameBeginY, inFrameEndX, inFrameEndY, inDepthLevel);
+    char *theMessage = new char[theSize];
+    sprintf(theMessage, kMessageFormat,
+                              inFrameBeginX, inFrameBeginY, inFrameEndX, inFrameEndY, inDepthLevel);
+
+    printGLMMat4(outMatrix, theMessage);
 #   endif //RENDER_DEBUG
 }
 
 void IQGraphView::draw() {
+    std::unique_lock<std::mutex> theWaitDeferredActionsAndRenderLock(_deferredActionsLock);
+
+    helper_processDeferredActions();
 
 #   ifdef RENDER_DEBUG
     dropGLErrors("draw begin");
@@ -123,18 +146,10 @@ void IQGraphView::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     //Process layer
-    if (!_graphLayer) return;
-    _graphLayer->graphViewAccess_initDLData();
+    if (!_activeLayer) return;
 
     //Setup programm
     glUseProgram(_programID);
-
-#   ifdef RENDER_DEBUG
-    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Started program %d", _programID);
-    if (glIsProgram(_programID) != GL_TRUE) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "...But this is not a program!!!");
-    }
-#   endif //RENDER_DEBUG
 
     //Setup input data
     //-Update and setup MVP Matrix (currently simple transform from frame to NDC)
@@ -147,13 +162,7 @@ void IQGraphView::draw() {
                                       _frameBegin.x, _frameBegin.y, _frameEnd.x, _frameEnd.y, 1.f);
 
     GLuint theMVPMatrixID = glGetUniformLocation(_programID, "MVPMatrix");
-#   ifdef RENDER_DEBUG
-    if (-1 == theMVPMatrixID) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
-                            "!!! Cannot find [MVPMatrix] uniform !!!");
-    }
     glUniformMatrix4fv(theMVPMatrixID, 1, GL_FALSE, glm::value_ptr(_fromToNDC));
-#   endif //RENDER_DEBUG
 
     //-Send depth data
     //TODO: Make sending of depth uniform works
@@ -161,16 +170,9 @@ void IQGraphView::draw() {
     //glUniform1f(theDepthID, 0.f);
 
     //-Setup vertex data
-
     //TODO: Using 1xGL_FLOAT_VEC3 instead 3xGL_FLOAT as attribute setting cause crash on draw. Why?
     GLuint theVertexAttributeID = glGetAttribLocation(_programID, "vertexPosition");
-#   ifdef RENDER_DEBUG
-    if (-1 == theVertexAttributeID) {
-        __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
-                            "!!! Cannot find [vertexPosition] attribute !!!");
-    }
-#   endif //RENDER_DEBUG
-    glBindBuffer(GL_ARRAY_BUFFER, _graphLayer->graphViewAccess_getVBOID());
+    glBindBuffer(GL_ARRAY_BUFFER, _activeLayer->graphViewAccess_getVBOID());
     glVertexAttribPointer(
             theVertexAttributeID,    /*Attribute ID*/
             2,                       /*Components per vertex*/
@@ -183,7 +185,7 @@ void IQGraphView::draw() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     //Draw
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, _graphLayer->graphViewAccess_getVBOVertexesNumber());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, _activeLayer->graphViewAccess_getVBOVertexesNumber());
 
     glUseProgram(0);
 
@@ -253,9 +255,102 @@ void IQGraphView::setFrameX(
              (theWorldX1New - theFrameX1Old);
 }
 
-//- - - - - - - - - - - - - - - - - - Graph layers - - - - - - - - - - - - - - - - - - - - - - -
-void IQGraphView::setGraphLayer(IQGraphViewLayer *inGraphLayer) {
-    _graphLayer = inGraphLayer;
+//- - - - - - - - - - - - - - - - - - - - Layers - - - - - - - - - - - - - - - - - - - - - - - - - -
+//@ - - - - - - - - - - - - - - - - Setting as active - - - - - - - - - - - - - - - - - - - - - - -@
+void IQGraphView::setActiveGraphLayer(IQGraphViewLayer *inLayer) {
+    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+
+    internal_registerDeferred_linkLayer(inLayer);
+    internal_registerDeferred_setActiveLayer(inLayer);
+}
+
+void IQGraphView::internal_registerDeferred_setActiveLayer(IQGraphViewLayer *inLayer) {
+    if (inLayer == _activeLayer) {
+        _isLayerToBeActiveSetNeed = false;
+    } else {
+        _isLayerToBeActiveSetNeed = true;
+        _layerToBeActive = inLayer;
+    }
+}
+
+void IQGraphView::internal_implementDeferred_setActiveLayer(IQGraphViewLayer *inLayer) {
+    if (!_isLayerToBeActiveSetNeed) return;
+
+    auto theIterator = std::find(_linkedLayers.begin(), _linkedLayers.end(), inLayer);
+    if (_linkedLayers.end() == theIterator){
+        //TODO: Maybe drop here message that layer is not connected.\
+        // Create argument to control messages then.
+        return;
+    }
+    _activeLayer = inLayer;
+}
+
+//@ - - - - - - - - - - - - - - - - - - Linking - - - - - - - - - - - - - - - - - - - - - - - - - -@
+void IQGraphView::linkGraphLayer(IQGraphViewLayer *inLayer) {
+    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+
+    internal_registerDeferred_linkLayer(inLayer);
+}
+
+void IQGraphView::internal_registerDeferred_linkLayer(IQGraphViewLayer *inLayer) {
+    auto theLayerToUnlink = std::find(_layersToUnlink.begin(), _layersToUnlink.end(), inLayer);
+    if (theLayerToUnlink != _layersToUnlink.end()) {
+        _layersToUnlink.erase(theLayerToUnlink);
+    } else {
+        _layersToLink.push_back(inLayer);
+    }
+}
+
+void IQGraphView::internal_implementDeferred_linkLayer(IQGraphViewLayer *inLayer) {
+    if (_linkedLayers.end() != std::find(_linkedLayers.begin(), _linkedLayers.end(), inLayer)){
+        //TODO: Maybe drop here message that layer was already connected.\
+        // Create argument to control it then.
+        return;
+    }
+    inLayer->graphViewAccess_initGLData();
+    _linkedLayers.push_back(inLayer);
+}
+
+//@ - - - - - - - - - - - - - - - - - - Unlinking - - - - - - - - - - - - - - - - - - - - - - - - -@
+void IQGraphView::unlinkGraphLayer(IQGraphViewLayer *inLayer) {
+    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+
+    internal_registerDeferred_unlinkLayer(inLayer);
+}
+
+void IQGraphView::internal_registerDeferred_unlinkLayer(IQGraphViewLayer *inLayer) {
+    auto theLayerToLink = std::find(_layersToLink.begin(), _layersToLink.end(), inLayer);
+    if (theLayerToLink != _layersToLink.end()) {
+        _layersToLink.erase(theLayerToLink);
+    } else {
+        _layersToUnlink.push_back(inLayer);
+    }
+}
+
+void IQGraphView::internal_implementDeferred_unlinkLayer(IQGraphViewLayer *inLayer) {
+    auto theIterator = std::find(_linkedLayers.begin(), _linkedLayers.end(), inLayer);
+    if (_linkedLayers.end() == theIterator){
+        //TODO: Maybe drop here message that layer is not connected\
+           Create argument to control it then
+        return;
+    }
+    (*theIterator)->graphViewAccess_deinitGLData();
+    _linkedLayers.erase(theIterator);
+}
+
+//- - - - - - - - - - - - - - - - - Deferred actions processing - - - - - - - - - - - - - - - - - -
+//NB: This method created for calling ONLY from draw!
+void IQGraphView::helper_processDeferredActions() {
+    //Unlink first - this may reduce deferred actions buffer realocations
+    for (IQGraphViewLayer *theLayer : _layersToUnlink) {
+        internal_implementDeferred_unlinkLayer(theLayer);
+    }
+
+    for (IQGraphViewLayer *theLayer : _layersToLink) {
+        internal_implementDeferred_linkLayer(theLayer);
+    }
+
+    internal_implementDeferred_setActiveLayer(_layerToBeActive);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,10 +370,9 @@ void IQGraphView::setGraphLayer(IQGraphViewLayer *inGraphLayer) {
 
 //GL calls data copying:
 //11. https://www.opengl.org/discussion_boards/showthread.php/177309-glUniformMatrix4fv-when-is-the-data-copied
-
-//Others:
-//1. https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glDebugMessageCallback.xhtml - won't help...
-//2. https://stackoverflow.com/questions/23066181/glgetuniformlocation-gives-glerror-gl-invalid-value - won't help...
+//
+//TODO: This ref is used for generating formated string. Move it to appropriate place
+//12. https://stackoverflow.com/questions/29087129/how-to-calculate-the-length-of-output-that-sprintf-will-generate
 
 // GLM matrix access:
 //        [0]_  [1]_  [2]_  [3]_

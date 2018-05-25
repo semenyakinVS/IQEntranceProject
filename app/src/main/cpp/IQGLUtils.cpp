@@ -3,6 +3,8 @@
 
 #include <android/log.h>
 
+#include <stdlib.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //================================== Helpers =======================================================
 typedef void (GLIntegerParameterAccessFunction)(
@@ -314,6 +316,25 @@ void printGLInfo(bool inPrintExtensions) {
     }
 }
 
+//- - - - - - - - - - - - - - - - - - - - Math - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void printGLMMat4(const glm::mat4x4 &inMatrix, const char *inMessage) {
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", " = = = = = glm::mat4 = = = = = =");
+    if (strlen(inMessage) != 0) {
+        __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "About: %s", inMessage);
+    }
+
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
+                        inMatrix[0][0], inMatrix[1][0], inMatrix[2][0], inMatrix[3][0]);
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
+                        inMatrix[0][1], inMatrix[1][1], inMatrix[2][1], inMatrix[3][1]);
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
+                        inMatrix[0][2], inMatrix[1][2], inMatrix[2][2], inMatrix[3][2]);
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "%f %f %f %f",
+                        inMatrix[0][3], inMatrix[1][3], inMatrix[2][3], inMatrix[3][3]);
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP",
+                        "= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =");
+}
+
 //--------------------------------- Enum to string conversions -------------------------------------
 const char *getGLErrorFlagString(GLenum inErrorFlag) {
     switch(inErrorFlag) {
@@ -461,3 +482,7 @@ const char *getGLTypeStringName(GLenum inType, bool inGetAsInGLSLName) {
 //1. https://www.khronos.org/assets/uploads/books/openglr_es_20_programming_guide_sample.pdf
 //2. https://stackoverflow.com/questions/440144/in-opengl-is-there-a-way-to-get-a-list-of-all-uniforms-attribs-used-by-a-shade
 //3. https://stackoverflow.com/questions/3375307/how-to-disable-code-formatting-for-some-part-of-the-code-using-comments
+//
+//Other interesting:
+//1. https://stackoverflow.com/questions/29087129/how-to-calculate-the-length-of-output-that-sprintf-will-generate - getting format length
+//2. https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glDebugMessageCallback.xhtml - GL debug for non GL (not ES) devices

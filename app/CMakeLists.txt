@@ -18,6 +18,7 @@ add_library( # Sets the name of the library.
 
              # Provides a relative path to your source file(s).
              src/main/cpp/IQGLUtils.cpp
+             src/main/cpp/IQWrappedClassManager.cpp
              src/main/cpp/IQGraphView.cpp
              src/main/cpp/IQGraphViewWrapping.cpp
              src/main/cpp/IQGraphViewLayer.cpp

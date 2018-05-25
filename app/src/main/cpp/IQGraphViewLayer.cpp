@@ -18,7 +18,8 @@
 //--------------------------------- Methods --------------------------------------------------------
 //- - - - - - - - - - - - - - - - Memory lifecycle - - - - - - - - - - - - - - - - - - - - - - - - -
 IQGraphViewLayer::IQGraphViewLayer(const float *inPointData, int inPointsCount)
-        : _vboID(0), _vboVertexesNumber(0), _pointData(nullptr), _pointsCount(inPointsCount)
+        : _pointData(nullptr), _pointsCount(inPointsCount),
+          _vboID(0), _vboVertexesNumber(0)
 {
     if (!inPointData) return;
 
@@ -34,11 +35,11 @@ IQGraphViewLayer::IQGraphViewLayer(const float *inPointData, int inPointsCount)
 }
 
 IQGraphViewLayer::~IQGraphViewLayer() {
-    internal_clearVBO();
+    //TODO: Fix possibly errors with removing of GL object, attached from JAVA
     if (nullptr != _pointData) delete _pointData;
 }
 
-//- - - - - - - - - - - - - - - - - Rendering data lifecycle - - - - - - - - - - - - - - - - - - - -
+//- - - - - - - - - - - - - - - - - - Render data lifecycle - - - - - - - - - - - - - - - - - - - -
 //@ - - - - - - - - - - - - - - Initializing rendering data VBO - - - - - - - - - - - - - - - - - -@
 void helper_pushVertexPosition(
         std::vector<float> &outVertexPosition, float inX, float inY)
@@ -58,9 +59,7 @@ float helper_middleZeroYX(const float *inPoint1Data, const float *inPoint2Data)
     return (y1*x2 - y2*x1)/(y1 - y2);
 }
 
-void IQGraphViewLayer::graphViewAccess_initDLData() {
-    if (!_pointData) return;
-
+void IQGraphViewLayer::graphViewAccess_initGLData() {
 #   ifdef RENDER_DEBUG
     dropGLErrors("graph data init begin");
 #   endif //RENDER_DEBUG
@@ -184,26 +183,13 @@ void IQGraphViewLayer::graphViewAccess_initDLData() {
     _vboID = createVBO(theVertexPositions.data(), sizeof(GLfloat)*theVBOSize,
                        GL_ARRAY_BUFFER, GL_STATIC_DRAW);
 
-    //We don't need points data now - it was converted to VBO vertex data and sent to the GPU.
-    // Remove it's CPU copy.
-    delete _pointData; _pointData = nullptr;
+    //NB: Don't remove _pointData. It may be used later
 
 #   ifdef RENDER_DEBUG
     dropGLErrors("graph data init end");
 #   endif //RENDER_DEBUG
 }
 
-//@ - - - - - - - - - - - - - - Deinitializing rendering data VBO - - - - - - - - - - - - - - - - -@
-void IQGraphViewLayer::graphViewAccess_deinitDLData() {
-    internal_clearVBO();
-}
-
-//- - - - - - - - - - - - - - - - Clearing - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void IQGraphViewLayer::internal_clearVBO() {
-    if (0 == _vboID) return;
-
-    //NB: glDeleteBuffers(...) set _vboID to zero on call
-    glDeleteBuffers(1, &_vboID);
-}
+void IQGraphViewLayer::graphViewAccess_deinitGLData() { glDeleteBuffers(1, &_vboID);  }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

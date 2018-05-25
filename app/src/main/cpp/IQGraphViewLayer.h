@@ -21,19 +21,13 @@ public:
     //NB: Currently non-virtual - we have no derived classes
     ~IQGraphViewLayer();
 
-private:
-    //- - - - - - - - - - - - - - - - Rendering data lifecycle - - - - - - - - - - - - - - - - - - -
-    friend class IQGraphView;
-
-    void graphViewAccess_initDLData();
+    //- - - - - - - - - - - - - - - - - Render data lifecycle - - - - - - - - - - - - - - - - - - -
+private: friend class IQGraphView;
+    void graphViewAccess_initGLData();
+    void graphViewAccess_deinitGLData();
 
     GLuint graphViewAccess_getVBOID() {  return _vboID; }
     int graphViewAccess_getVBOVertexesNumber() { return _vboVertexesNumber; }
-
-    void graphViewAccess_deinitDLData();
-
-    //- - - - - - - - - - - - - - - - - - - Clearing - - - - - - - - - - - - - - - - - - - - - - - -
-    void internal_clearVBO();
 
     //-------------------------------------- State -------------------------------------------------
 private:

@@ -9,6 +9,8 @@
 
 #include "IQGraphViewLayerWrapping.h"
 
+#include <android/log.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 static IQWrappedClassManager<IQGraphView> gClassManager;
 
@@ -33,10 +35,10 @@ extern "C" {
     //- - - - - - - - - - - - - - - - - Render lifecycle - - - - - - - - - - - - - - - - - - - - - -
     void
     JNICALL
-        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeInit(
+        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeReinit(
             JNIEnv *, jobject /* this */, jint inInstanceID)
     {
-        gClassManager.getInstance(inInstanceID)->init();
+        gClassManager.getInstance(inInstanceID)->reinit();
     }
 
     void
@@ -76,12 +78,30 @@ extern "C" {
 
     //- - - - - - - - - - - - - - - - - - Graph layers - - - - - - - - - - - - - - - - - - - - - - -
     void JNICALL
-        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetGraphLayer(
+        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetActiveGraphLayer(
             JNIEnv *, jobject /* this */, jint inInstanceID,
             jint inGraphInstanceID)
     {
-        gClassManager.getInstance(inInstanceID)->setGraphLayer(
-                wrappersInteraction_getGraphViewInstance(inGraphInstanceID));
+        gClassManager.getInstance(inInstanceID)->setActiveGraphLayer(
+                wrappersInteraction_getGraphViewLayerInstance(inGraphInstanceID));
+    }
+
+    void JNICALL
+        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeLinkGraphLayer(
+            JNIEnv *, jobject /* this */, jint inInstanceID,
+            jint inGraphInstanceID)
+    {
+        gClassManager.getInstance(inInstanceID)->linkGraphLayer(
+                wrappersInteraction_getGraphViewLayerInstance(inGraphInstanceID));
+    }
+
+    void JNICALL
+        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeUnlinkGraphLayer(
+            JNIEnv *, jobject /* this */, jint inInstanceID,
+            jint inGraphInstanceID)
+    {
+        gClassManager.getInstance(inInstanceID)->unlinkGraphLayer(
+                wrappersInteraction_getGraphViewLayerInstance(inGraphInstanceID));
     }
 }
 

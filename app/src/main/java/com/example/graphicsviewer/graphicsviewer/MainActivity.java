@@ -45,13 +45,13 @@ public class MainActivity extends AppCompatActivity {
         //Connect button events
         findViewById(R.id.showFirstGraphButton).setOnClickListener(new View.OnClickListener() {
             public void onClick(View unused) {
-                _graphView.setGraphLayer(_firstGraphLayer);
+                _graphView.setActiveGraphLayer(_firstGraphLayer);
             }
         });
 
         findViewById(R.id.showSecondGraphButton).setOnClickListener(new View.OnClickListener() {
             public void onClick(View unused) {
-                _graphView.setGraphLayer(_secondGraphLayer);
+                _graphView.setActiveGraphLayer(_secondGraphLayer);
             }
         });
 
@@ -86,8 +86,7 @@ public class MainActivity extends AppCompatActivity {
                 7.f, -3.f
         });
 
-        //Setup first graph layer
-        _graphView.setGraphLayer(_firstGraphLayer);
+        _graphView.setActiveGraphLayer(_firstGraphLayer);
     }
 
     @Override

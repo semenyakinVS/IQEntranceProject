@@ -4,7 +4,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <GLES2/gl2.h>
-#include <stdlib.h>
+
+#include "glm/mat4x4.hpp"
 
 #define RENDER_DEBUG
 
@@ -41,6 +42,9 @@ void dropGLErrors(const char *inMessage = "<no message>");
 
 //--------------------------------- General purpose printing ---------------------------------------
 void printGLInfo(bool inPrintExtensions = false);
+
+//- - - - - - - - - - - - - - - - - - - - Math - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void printGLMMat4(const glm::mat4x4 &inMatrix, const char *inMessage = "");
 
 //--------------------------------- Enum to string conversions -------------------------------------
 //NB: This functions return const literal strings. Don't delete[] them, please!

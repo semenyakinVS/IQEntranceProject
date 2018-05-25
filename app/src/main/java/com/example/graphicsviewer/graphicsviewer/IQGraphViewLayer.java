@@ -17,6 +17,8 @@ public class IQGraphViewLayer {
 
     //@ - - - - - - - - - - - - - - - - -Memory lifecycle - - - - - - - - - - - - - - - - - - - - -@
     private native int nativeCreateInstance(float[] inPointData);
+
+    //TODO: Perform correct delete of instance
     private native void nativeDeleteInstance(int inInstanceID);
 
     //--------------------------------------- State ------------------------------------------------

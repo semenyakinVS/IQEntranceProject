@@ -6,9 +6,10 @@ import android.content.Context;
 import android.content.pm.ConfigurationInfo;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+
+import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -20,7 +21,13 @@ public class IQGraphView extends GLSurfaceView {
     public IQGraphView(Context inContext) {
         super(inContext);
 
+        //Initialize state
         _cppInstanceID = nativeCreateInstance();
+
+        _layers = new Vector<IQGraphViewLayer>();
+
+        _screenX1Old = 0.0f;
+        _screenX2Old = 0.0f;
 
         //Test GL support
         ActivityManager activityManager
@@ -60,7 +67,7 @@ public class IQGraphView extends GLSurfaceView {
         setRenderer(new Renderer() {
             @Override
             public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-                nativeInit(_cppInstanceID);
+                nativeReinit(_cppInstanceID);
             }
 
             @Override
@@ -126,8 +133,34 @@ public class IQGraphView extends GLSurfaceView {
     }
 
     //- - - - - - - - - - - - - - - - - - Graph layer  - - - - - - - - - - - - - - - - - - - - - - -
-    public void setGraphLayer(IQGraphViewLayer inLayer) {
-        nativeSetGraphLayer(_cppInstanceID, inLayer.wrappersInteraction_cppInstanceID());
+    //TODO: Use here declared constant for "native-null" value (or even shared with C++ code)
+    public void setActiveGraphLayer(IQGraphViewLayer inLayer) {
+        if (!_layers.contains(inLayer)) _layers.add(inLayer);
+
+        nativeSetActiveGraphLayer(_cppInstanceID, (null == inLayer) ?
+                -1 : inLayer.wrappersInteraction_cppInstanceID());
+
+        requestRender();
+    }
+
+    public void linkLayer(IQGraphViewLayer inLayer) {
+        if (inLayer != null && !_layers.contains(inLayer)) _layers.add(inLayer);
+
+        nativeLinkGraphLayer(_cppInstanceID, (null == inLayer) ?
+                -1 : inLayer.wrappersInteraction_cppInstanceID());
+    }
+
+    //TODO: Java methods provide immidiatly owning/unowning of Layers, while native code do\
+    // deferred. It may cause an error - when unlinking. Fix it later. Best way to fix - remove this
+    // methods from Java user API and control linking/unlinking only in native code (but this will
+    // not fix the problem as itself).
+    public void unlinkLayer(IQGraphViewLayer inLayer) {
+        if (inLayer != null && _layers.contains(inLayer)) _layers.remove(inLayer);
+
+        nativeUnlinkGraphLayer(_cppInstanceID, (null == inLayer) ?
+                -1 : inLayer.wrappersInteraction_cppInstanceID());
+
+        //Redraw after possible unlinking of active graph
         requestRender();
     }
 
@@ -137,10 +170,12 @@ public class IQGraphView extends GLSurfaceView {
 
     //@ - - - - - - - - - - - - - - - - -Memory lifecycle - - - - - - - - - - - - - - - - - - - - -@
     private native int nativeCreateInstance();
+
+    //TODO: Perform correct delete of instance
     private native void nativeDeleteInstance(int inInstanceID);
 
     //@ - - - - - - - - - - - - - - - - -Render lifecycle - - - - - - - - - - - - - - - - - - - - -@
-    private native void nativeInit(int inInstanceID);
+    private native void nativeReinit(int inInstanceID);
     private native void nativeDraw(int inInstanceID);
 
     //@ - - - - - - - - - - - - - - - - -Viewport control - - - - - - - - - - - - - - - - - - - - -@
@@ -154,10 +189,17 @@ public class IQGraphView extends GLSurfaceView {
             float inX1ToBind, float inX2ToBind, float inBindingX1, float inBindingX2);
 
     //- - - - - - - - - - - - - - - - - - Graph layers - - - - - - - - - - - - - - - - - - - - - - -
-    private native void nativeSetGraphLayer(int inInstanceID, int inGraphInstanceID);
+    private native void nativeSetActiveGraphLayer(int inInstanceID, int inGraphInstanceID);
+
+    private native void nativeLinkGraphLayer(int inInstanceID, int inGraphInstanceID);
+    private native void nativeUnlinkGraphLayer(int inInstanceID, int inGraphInstanceID);
 
     //--------------------------------------- State ------------------------------------------------
     private int _cppInstanceID;
+
+    //NB: Layer are connected in native code. We save layer link in Java code too. Without it
+    // connected layer may be removed by garbage collector - and not free it's state correctly
+    Vector<IQGraphViewLayer> _layers = null;
 
     private float _screenX1Old = 0.0f;
     private float _screenX2Old = 0.0f;
@@ -168,4 +210,10 @@ public class IQGraphView extends GLSurfaceView {
 //1. http://www.learnopengles.com/calling-opengl-from-android-using-the-ndk/
 //2. https://stackoverflow.com/questions/21877127/calling-system-loadlibrary-twice-for-the-same-shared-library
 //3. https://developer.android.com/training/gestures/multi
+//
+//About order of gl initializing calls
 //4. https://stackoverflow.com/questions/12115655/why-is-my-opengl-code-failing
+//
+//Rerun on orientation change
+//5. https://stackoverflow.com/questions/19067089/onsurfacecreated-called-every-time-orientation-changes
+//6. https://developer.android.com/guide/topics/resources/runtime-changes

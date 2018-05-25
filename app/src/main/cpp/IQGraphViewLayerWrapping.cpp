@@ -35,7 +35,7 @@ extern "C" {
 }
 
 //================================= Wrappers interaction ===========================================
-IQGraphViewLayer *wrappersInteraction_getGraphViewInstance(int inInstanceID) {
+IQGraphViewLayer *wrappersInteraction_getGraphViewLayerInstance(int inInstanceID) {
     return gClassManager.getInstance(inInstanceID);
 }
 

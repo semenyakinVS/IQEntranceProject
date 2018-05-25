@@ -10,12 +10,15 @@
 #include <cstdlib>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+extern const int kWrappedClassNullID;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T_Type>
 class IQWrappedClassManager {
 public:
     template<typename ... T_Args>
     int createInstance(T_Args ... inArgs) {
-        //TODO: Use here object pool
+        //TODO: Use object pool here
         T_Type *theObjectMemory = (T_Type *)malloc(sizeof(T_Type));
         new (theObjectMemory) T_Type(inArgs ...);
         _instances.push_back(theObjectMemory);
@@ -23,7 +26,9 @@ public:
         return (_instances.size() - 1);
     }
 
-    T_Type *getInstance(int inInstanceID) { return _instances[inInstanceID]; }
+    T_Type *getInstance(int inInstanceID) {
+        return (kWrappedClassNullID == inInstanceID ? nullptr : _instances[inInstanceID]);
+    }
 
     void deleteInstance(int inInstanceID) {
         //TODO: Put here error tracking
