@@ -132,6 +132,12 @@ public class IQGraphView extends GLSurfaceView {
                 || Build.MODEL.contains("Android SDK built for x86"));
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        nativeDeleteInstance(_cppInstanceID);
+    }
+
     //- - - - - - - - - - - - - - - - - - Graph layer  - - - - - - - - - - - - - - - - - - - - - - -
     //TODO: Use here declared constant for "native-null" value (or even shared with C++ code)
     public void setActiveGraphLayer(IQGraphViewLayer inLayer) {
@@ -170,8 +176,6 @@ public class IQGraphView extends GLSurfaceView {
 
     //@ - - - - - - - - - - - - - - - - -Memory lifecycle - - - - - - - - - - - - - - - - - - - - -@
     private native int nativeCreateInstance();
-
-    //TODO: Perform correct delete of instance
     private native void nativeDeleteInstance(int inInstanceID);
 
     //@ - - - - - - - - - - - - - - - - -Render lifecycle - - - - - - - - - - - - - - - - - - - - -@
@@ -195,7 +199,7 @@ public class IQGraphView extends GLSurfaceView {
     private native void nativeUnlinkGraphLayer(int inInstanceID, int inGraphInstanceID);
 
     //--------------------------------------- State ------------------------------------------------
-    private int _cppInstanceID;
+    private int _cppInstanceID = -1;
 
     //NB: Layer are connected in native code. We save layer link in Java code too. Without it
     // connected layer may be removed by garbage collector - and not free it's state correctly
@@ -217,3 +221,6 @@ public class IQGraphView extends GLSurfaceView {
 //Rerun on orientation change
 //5. https://stackoverflow.com/questions/19067089/onsurfacecreated-called-every-time-orientation-changes
 //6. https://developer.android.com/guide/topics/resources/runtime-changes
+//
+//Finalizing
+//7. https://thebreakfastpost.com/2012/02/09/wrapping-a-c-library-with-jni-part-3/

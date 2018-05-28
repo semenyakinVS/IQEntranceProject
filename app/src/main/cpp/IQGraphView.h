@@ -71,17 +71,17 @@ public:
     void linkGraphLayer(IQGraphViewLayer *inLayer);
 private:
     void internal_registerDeferred_linkLayer(IQGraphViewLayer *inLayer);
-    void internal_implementDeferred_linkLayer(IQGraphViewLayer *inLayer);
+    void internal_implementDeferred_linkLayer(IQGraphViewLayer *inLayer, bool inUpdateGLState);
 
 public:
     void unlinkGraphLayer(IQGraphViewLayer *inLayer);
 private:
     void internal_registerDeferred_unlinkLayer(IQGraphViewLayer *inLayer);
-    void internal_implementDeferred_unlinkLayer(IQGraphViewLayer *inLayer);
+    void internal_implementDeferred_unlinkLayer(IQGraphViewLayer *inLayer, bool inUpdateGLState);
 
     //- - - - - - - - - - - - - - - - Deferred actions processing - - - - - - - - - - - - - - - - -
     //NB: This method created for calling ONLY from draw!
-    void helper_processDeferredActions();
+    void helper_processDeferredActions(bool inUpdateGLState);
 
     //-------------------------------------- State -------------------------------------------------
 private:

@@ -36,7 +36,11 @@ IQGraphViewLayer::IQGraphViewLayer(const float *inPointData, int inPointsCount)
 
 IQGraphViewLayer::~IQGraphViewLayer() {
     //TODO: Fix possibly errors with removing of GL object, attached from JAVA
-    if (nullptr != _pointData) delete _pointData;
+    if (nullptr != _pointData) delete [] _pointData;
+
+#   ifdef GRAPH_DEBUG
+    __android_log_print(ANDROID_LOG_WARN, "IQ_APP", "Graph points removed");
+#   endif //GRAPH_DEBUG
 }
 
 //- - - - - - - - - - - - - - - - - - Render data lifecycle - - - - - - - - - - - - - - - - - - - -

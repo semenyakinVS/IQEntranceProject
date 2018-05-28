@@ -2,17 +2,13 @@
 // Created by test on 5/23/2018.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#include <jni.h>
-
 #include "IQWrappedClassManager.h"
-#include "IQGraphView.h"
 
+#include "IQGraphView.h"
 #include "IQGraphViewLayerWrapping.h"
 
-#include <android/log.h>
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-static IQWrappedClassManager<IQGraphView> gClassManager;
+static IQWrappedClassManager<IQGraphView, 2> gClassManager;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 extern "C" {
@@ -20,14 +16,14 @@ extern "C" {
     //- - - - - - - - - - - - - - - - Memory lifecycle - - - - - - - - - - - - - - - - - - - - - - -
     jint JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeCreateInstance(
-            JNIEnv *, jobject /* this */)
+            JNIEnv *, jobject)
     {
         return gClassManager.createInstance();
     }
 
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeDeleteInstance(
-            JNIEnv *, jobject /* this */, jint inInstanceID)
+            JNIEnv *, jobject, jint inInstanceID)
     {
         gClassManager.deleteInstance(inInstanceID);
     }
@@ -36,15 +32,14 @@ extern "C" {
     void
     JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeReinit(
-            JNIEnv *, jobject /* this */, jint inInstanceID)
+            JNIEnv *, jobject, jint inInstanceID)
     {
         gClassManager.getInstance(inInstanceID)->reinit();
     }
 
-    void
-    JNICALL
+    void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeDraw(
-            JNIEnv *, jobject /* this */, jint inInstanceID)
+            JNIEnv *, jobject, jint inInstanceID)
     {
         gClassManager.getInstance(inInstanceID)->draw();
     }
@@ -52,7 +47,7 @@ extern "C" {
     //- - - - - - - - - - - - - - - - - Viewport control - - - - - - - - - - - - - - - - - - - - - -
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetViewport(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+            JNIEnv *, jobject, jint inInstanceID,
             jfloat inWidth, jfloat inHeight)
     {
         gClassManager.getInstance(inInstanceID)->setViewport(inWidth, inHeight);
@@ -60,8 +55,8 @@ extern "C" {
 
     //- - - - - - - - - - - - - - - - - Frame control - - - - - - - - - - - - - - - - - - - - - - -
     void JNICALL
-    Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetFrame(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+        Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetFrame(
+            JNIEnv *, jobject, jint inInstanceID,
             jfloat inX1, jfloat inY1, jfloat inX2, jfloat inY2)
     {
         gClassManager.getInstance(inInstanceID)->setFrame(inX1, inY1, inX2, inY2);
@@ -69,7 +64,7 @@ extern "C" {
 
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetFrameX(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+            JNIEnv *, jobject, jint inInstanceID,
             jfloat inX1ToBind, jfloat inX2ToBind, jfloat inBindingX1, jfloat inBindingX2)
     {
         gClassManager.getInstance(inInstanceID)->setFrameX(
@@ -79,7 +74,7 @@ extern "C" {
     //- - - - - - - - - - - - - - - - - - Graph layers - - - - - - - - - - - - - - - - - - - - - - -
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeSetActiveGraphLayer(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+            JNIEnv *, jobject, jint inInstanceID,
             jint inGraphInstanceID)
     {
         gClassManager.getInstance(inInstanceID)->setActiveGraphLayer(
@@ -88,7 +83,7 @@ extern "C" {
 
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeLinkGraphLayer(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+            JNIEnv *, jobject, jint inInstanceID,
             jint inGraphInstanceID)
     {
         gClassManager.getInstance(inInstanceID)->linkGraphLayer(
@@ -97,7 +92,7 @@ extern "C" {
 
     void JNICALL
         Java_com_example_graphicsviewer_graphicsviewer_IQGraphView_nativeUnlinkGraphLayer(
-            JNIEnv *, jobject /* this */, jint inInstanceID,
+            JNIEnv *, jobject, jint inInstanceID,
             jint inGraphInstanceID)
     {
         gClassManager.getInstance(inInstanceID)->unlinkGraphLayer(

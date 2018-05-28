@@ -22,6 +22,7 @@ public:
     ~IQGraphViewLayer();
 
     //- - - - - - - - - - - - - - - - - Render data lifecycle - - - - - - - - - - - - - - - - - - -
+    //NB: GL state (as a GL context) is fully controlled by Graph View.
 private: friend class IQGraphView;
     void graphViewAccess_initGLData();
     void graphViewAccess_deinitGLData();

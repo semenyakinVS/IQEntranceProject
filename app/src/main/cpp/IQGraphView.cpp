@@ -79,12 +79,17 @@ void IQGraphView::internal_init() {
 }
 
 void IQGraphView::reinit() {
-    std::unique_lock<std::mutex> theWaitReinitLock(_deferredActionsLock);
-
-    helper_processDeferredActions();
+    std::lock_guard<std::mutex> theWaitReinitLock(_deferredActionsLock);
 
     internal_init();
 
+    //NB: On calling reinit all GL state was deleted (or jsut not created) by some external GL
+    // context controller. So here we need just update set of linked Layers processing deferred
+    // actions - without Layers GL state update and...
+    helper_processDeferredActions(false);
+
+    //...init GL state for linked Layers. GL state of Layers that was unlinked on last update was
+    // deleted with old GL context (or just not initialized if there was no context).
     for (IQGraphViewLayer *theLayer : _linkedLayers) {
         theLayer->graphViewAccess_initGLData();
     }
@@ -134,9 +139,9 @@ void helper_fillCameraFrameToNDCMatrix(glm::mat4x4 &outMatrix,
 }
 
 void IQGraphView::draw() {
-    std::unique_lock<std::mutex> theWaitDeferredActionsAndRenderLock(_deferredActionsLock);
+    std::lock_guard<std::mutex> theWaitDeferredActionsAndRenderLock(_deferredActionsLock);
 
-    helper_processDeferredActions();
+    helper_processDeferredActions(true);
 
 #   ifdef RENDER_DEBUG
     dropGLErrors("draw begin");
@@ -258,7 +263,7 @@ void IQGraphView::setFrameX(
 //- - - - - - - - - - - - - - - - - - - - Layers - - - - - - - - - - - - - - - - - - - - - - - - - -
 //@ - - - - - - - - - - - - - - - - Setting as active - - - - - - - - - - - - - - - - - - - - - - -@
 void IQGraphView::setActiveGraphLayer(IQGraphViewLayer *inLayer) {
-    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+    std::lock_guard<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
 
     internal_registerDeferred_linkLayer(inLayer);
     internal_registerDeferred_setActiveLayer(inLayer);
@@ -287,7 +292,7 @@ void IQGraphView::internal_implementDeferred_setActiveLayer(IQGraphViewLayer *in
 
 //@ - - - - - - - - - - - - - - - - - - Linking - - - - - - - - - - - - - - - - - - - - - - - - - -@
 void IQGraphView::linkGraphLayer(IQGraphViewLayer *inLayer) {
-    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+    std::lock_guard<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
 
     internal_registerDeferred_linkLayer(inLayer);
 }
@@ -301,19 +306,22 @@ void IQGraphView::internal_registerDeferred_linkLayer(IQGraphViewLayer *inLayer)
     }
 }
 
-void IQGraphView::internal_implementDeferred_linkLayer(IQGraphViewLayer *inLayer) {
+void IQGraphView::internal_implementDeferred_linkLayer(
+        IQGraphViewLayer *inLayer, bool inUpdateGLState)
+{
     if (_linkedLayers.end() != std::find(_linkedLayers.begin(), _linkedLayers.end(), inLayer)){
         //TODO: Maybe drop here message that layer was already connected.\
         // Create argument to control it then.
         return;
     }
-    inLayer->graphViewAccess_initGLData();
+
+    if (inUpdateGLState) inLayer->graphViewAccess_initGLData();
     _linkedLayers.push_back(inLayer);
 }
 
 //@ - - - - - - - - - - - - - - - - - - Unlinking - - - - - - - - - - - - - - - - - - - - - - - - -@
 void IQGraphView::unlinkGraphLayer(IQGraphViewLayer *inLayer) {
-    std::unique_lock<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
+    std::lock_guard<std::mutex> theWaitDeferredActionsRegistering(_deferredActionsLock);
 
     internal_registerDeferred_unlinkLayer(inLayer);
 }
@@ -327,27 +335,30 @@ void IQGraphView::internal_registerDeferred_unlinkLayer(IQGraphViewLayer *inLaye
     }
 }
 
-void IQGraphView::internal_implementDeferred_unlinkLayer(IQGraphViewLayer *inLayer) {
+void IQGraphView::internal_implementDeferred_unlinkLayer(
+        IQGraphViewLayer *inLayer, bool inUpdateGLState)
+{
     auto theIterator = std::find(_linkedLayers.begin(), _linkedLayers.end(), inLayer);
     if (_linkedLayers.end() == theIterator){
         //TODO: Maybe drop here message that layer is not connected\
            Create argument to control it then
         return;
     }
-    (*theIterator)->graphViewAccess_deinitGLData();
+
+    if (inUpdateGLState) (*theIterator)->graphViewAccess_deinitGLData();
     _linkedLayers.erase(theIterator);
 }
 
 //- - - - - - - - - - - - - - - - - Deferred actions processing - - - - - - - - - - - - - - - - - -
 //NB: This method created for calling ONLY from draw!
-void IQGraphView::helper_processDeferredActions() {
+void IQGraphView::helper_processDeferredActions(bool inUpdateGLState) {
     //Unlink first - this may reduce deferred actions buffer realocations
     for (IQGraphViewLayer *theLayer : _layersToUnlink) {
-        internal_implementDeferred_unlinkLayer(theLayer);
+        internal_implementDeferred_unlinkLayer(theLayer, inUpdateGLState);
     }
 
     for (IQGraphViewLayer *theLayer : _layersToLink) {
-        internal_implementDeferred_linkLayer(theLayer);
+        internal_implementDeferred_linkLayer(theLayer, inUpdateGLState);
     }
 
     internal_implementDeferred_setActiveLayer(_layerToBeActive);
@@ -373,6 +384,9 @@ void IQGraphView::helper_processDeferredActions() {
 //
 //TODO: This ref is used for generating formated string. Move it to appropriate place
 //12. https://stackoverflow.com/questions/29087129/how-to-calculate-the-length-of-output-that-sprintf-will-generate
+
+//Thread safe:
+//13. https://stackoverflow.com/questions/20516773/stdunique-lockstdmutex-or-stdlock-guardstdmutex
 
 // GLM matrix access:
 //        [0]_  [1]_  [2]_  [3]_
